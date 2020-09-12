@@ -121,13 +121,16 @@ class CPU:
         """ALU operations."""
 
         if op == "ADD":
+            # Add the value in two registers and store the result in regA
             self.reg[reg_a] += self.reg[reg_b]
         # elif op == "SUB": etc
         elif op == "MUL":
+            # Multiply the values in two registers together and store the result in regA
             result = self.reg[reg_a] * self.reg[reg_b]
             self.reg[reg_a] = result
             self.pc += 3
         elif op == "CMP":
+            # Compare the values in two registers.
             if self.reg[reg_a] == self.reg[reg_b]:
                 self.E = 1
             else:
@@ -169,31 +172,35 @@ class CPU:
 
     # Day 1 Step 4: Implement the HLT instruction handler
     def hlt_func(self):
+        # Halt the CPU (and exit the emulator)
         exit(1)
 
     def ldi_func(self):
         MAR = self.ram_read(self.pc + 1)
         MDR = self.ram_read(self.pc + 2)
-
+        # Set the value of a register to an integer.
         if MAR < len(self.ram):
             self.reg[MAR] = MDR
         # Increment program counter by 3 steps inside the RAM
         self.pc += 3
 
     def prn_func(self):
+        # Print numeric value stored in the given register.
+        # Print to the console the decimal integer value that is stored in the given register.
         operand_a = self.ram_read(self.pc + 1)
         print(self.reg[operand_a])
         self.pc += 2
 
     # Day 2 Step 8: Implement a Multiply and Print the Result
     def mul_func(self):
+        # handled in the ALU
         reg_a = self.ram_read(self.pc + 1)
-        # register 2
         reg_b = self.ram_read(self.pc + 2)
         self.alu("MUL", reg_a, reg_b)
 
     # Step 10: Implement System Stack
     def push_func(self):
+        # Push the value in the given register on the stack.
         # Decrement the stack pop_func
         self.reg[7] -= 1
         operand_a = self.ram_read(self.pc + 1)
@@ -204,6 +211,7 @@ class CPU:
     # Step 10: Implement System Stack
 
     def pop_func(self):
+        # Pop the value from the top of the stack and store it in the PC.
         # Read value of SP, overwrite next register
         operand_a = self.ram_read(self.pc + 1)
         self.reg[operand_a] = self.ram_read(self.reg[7])
@@ -212,11 +220,14 @@ class CPU:
         self.pc += 2
 
     def ret_func(self):
+        # Return from subroutine.
+        # Pop the value from the top of the stack and store it in the PC.
         self.pc = self.ram_read(self.reg[7])
         self.reg[7] += 1
 
     # Step 11: Implement Subroutine Calls
     def call_func(self):
+        # Calls a subroutine(function) at the address stored in the register.
         temp = self.ram_read(self.pc + 1)
         sub = self.reg[temp]
         ret = self.pc + 2
@@ -231,25 +242,27 @@ class CPU:
     # Add the CMP and flags, JMP, JEQ, JNE instructions
 
     def cmp_func(self):
+        # Handled in the ALU
         reg_a = self.ram_read(self.pc + 1)
         reg_b = self.ram_read(self.pc + 2)
 
         self.alu("CMP", reg_a, reg_b)
 
     def jmp_func(self):
-        print("JMP")
+        # Jump to the address stored in the given register.
+        # Set the PC to the address stored in the given register.
         reg_a = self.ram_read(self.pc + 1)
         self.pc = self.reg[reg_a]
 
     def jeq_func(self):
-        print("JEQ")
+        # If equal flag is set (true), jump to the address stored in the given register
         if self.E == 1:
             self.jmp_func()
         else:
             self.pc += 2
 
     def jne_func(self):
-        print("JNE")
+        # If E flag is clear(false, 0), jump to the address stored in the given register.
         if self.E == 0:
             self.jmp_func()
         else:
@@ -261,18 +274,10 @@ class CPU:
         """Run the CPU."""
         self.running = True
 
-        # while self.running == True:
-        #     IR = self.ram[self.pc]
-        #     if IR in self.br_tbl:
-        #         # find the function/instruction based on the IR
-        #         self.br_tbl[IR]()
-        #     else:
-        #         print("CAN'T FiND", IR)
-        while True:
-            # Instructions register(IR)
-            IR = self.ram_read(self.pc)
-            # print(IR,"\n")
+        while self.running == True:
+            IR = self.ram[self.pc]
             if IR in self.br_tbl:
+                # find the function/instruction based on the IR
                 self.br_tbl[IR]()
             else:
-                print("ERROR:", IR)
+                print("CAN'T FiND", IR)
