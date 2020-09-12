@@ -7,13 +7,21 @@
 import sys
 
 # Day 1 Step 4-6
-
+# refer to LS8-spec file
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 MUL = 0b10100010
 PUSH = 0b01000101
 POP = 0b01000110
+RET = 0b00010001
+CALL = 0b01010000
+
+# SPRINT add instructions
+CMP = 0b10100111
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 
 
 class CPU:
@@ -43,11 +51,20 @@ class CPU:
         self.br_tbl[PUSH] = self.push_func
         # Pop the value in the stack into the given register
         self.br_tbl[POP] = self.pop_func
+        # Return from subroutine
+        self.br_tbl[RET] = self.ret_func
+        # Calls a subroutine (function) at the address stored in the register.
+        self.br_tbl[CALL] = self.call_func
+
+        # SPRINT CHALLENGE
+        self.br_tbl[CMP] = self.cmp_func
+        self.br_tbl[JMP] = self.jmp_func
+        self.br_tbl[JEQ] = self.jeq_func
+        self.br_tbl[JNE] = self.jne_func
 
     # Day 1 Step 2
     # Ram read should accept the address to read and
     # Return the value stored there
-
     def ram_read(self, MAR):
         return self.ram[MAR]
 
@@ -76,48 +93,29 @@ class CPU:
                     line0 = line.split('#')
                     temp = line0[0].strip()
                     # if line is empty
-                    # if len(temp) == 0:
-                    #     continue
+                    if len(temp) == 0:
+                        continue
                     # # if temp at 0 is a hashmark
-                    # if temp[0] == "#":
-                    #     continue
-                    #     # temp = line.split('#')
-                    #     # using base 2, decimal
+                    if temp[0] == "#":
+                        continue
+                        # temp = line.split('#')
+                        # using base 2, decimal
                     self.ram[address] = int(temp, 2)
                     address += 1
                     # to handle errors such as comments, blanklines, etc.
         except ValueError:
             print(f"Invalid number: {temp[0]}")
             sys.exit(1)
+            # pass
         # check validity, comes from the command line "Thinking like a villan"
         except FileNotFoundError:
             print(f"Couldn't open {sys.argv[1]}")
-            sys.exit(3)
-
-            # print first 12 address
-            # print(self.ram[:12])
             sys.exit(2)
 
             # valid check if there is no instructions
             if address == 0:
                 print("Program was empty!")
-                sys.exit(4)
-
-        # For now, we've just hardcoded a program:
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111,  # PRN R0
-        #     0b00000000,
-        #     0b00000001,  # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
+                sys.exit(3)
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -129,6 +127,23 @@ class CPU:
             result = self.reg[reg_a] * self.reg[reg_b]
             self.reg[reg_a] = result
             self.pc += 3
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.E = 1
+            else:
+                self.E = 0
+
+            if self.reg[reg_a] < self.reg[reg_b]:
+                self.L = 1
+            else:
+                self.L = 0
+
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.G = 1
+            else:
+                self.G = 0
+            self.pc += 3
+
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -186,10 +201,8 @@ class CPU:
         self.ram[self.reg[7]] = self.reg[operand_a]
         self.pc += 2
 
-    # Step 11: Implement Subroutine Calls
-    def ret_func
-
     # Step 10: Implement System Stack
+
     def pop_func(self):
         # Read value of SP, overwrite next register
         operand_a = self.ram_read(self.pc + 1)
@@ -198,49 +211,68 @@ class CPU:
         self.reg[7] += 1
         self.pc += 2
 
+    def ret_func(self):
+        self.pc = self.ram_read(self.reg[7])
+        self.reg[7] += 1
+
+    # Step 11: Implement Subroutine Calls
+    def call_func(self):
+        temp = self.ram_read(self.pc + 1)
+        sub = self.reg[temp]
+        ret = self.pc + 2
+        while self.ram_read(ret) not in self.br_tbl:
+            ret += 1
+
+        self.reg[7] -= 1
+        self.ram[self.reg[7]] = ret
+        self.pc = sub
+
+    # SPRINT CHALLENGE
+    # Add the CMP and flags, JMP, JEQ, JNE instructions
+
+    def cmp_func(self):
+        reg_a = self.ram_read(self.pc + 1)
+        reg_b = self.ram_read(self.pc + 2)
+
+        self.alu("CMP", reg_a, reg_b)
+
+    def jmp_func(self):
+        print("JMP")
+        reg_a = self.ram_read(self.pc + 1)
+        self.pc = self.reg[reg_a]
+
+    def jeq_func(self):
+        print("JEQ")
+        if self.E == 1:
+            self.jmp_func()
+        else:
+            self.pc += 2
+
+    def jne_func(self):
+        print("JNE")
+        if self.E == 0:
+            self.jmp_func()
+        else:
+            self.pc += 2
+
     # Day 1 Step 3
 
     def run(self):
         """Run the CPU."""
         self.running = True
 
-        while self.running == True:
-
-            IR = self.ram[self.pc]
-            # # Loading
-            # # if IR == 0b10000010:
-            # if IR == LDI:
-            #     operand_a = self.ram[self.pc + 1]
-            #     operand_b = self.ram[self.pc + 2]
-            #     self.reg[operand_a] = operand_b
-            #     self.pc += 3  # 3 movements
-            # # elif IR == 0b01000111:
-            # elif IR == PRN:
-            #     operand_a = self.ram[self.pc + 1]
-            #     value = self.reg[operand_a]
-            #     print(value)
-            #     self.pc += 2
-            # # elif IR == 0b00000001:
-            # elif IR == HLT:
-            #     self.running = False
-            # # elif IR == 0b10100010:
-            # elif IR == MUL:
-            #     print("This is MUlt_Func")
-            #     # register 1
-            #     register1 = self.ram_read(self.pc + 1)
-            #     # register 2
-            #     register2 = self.ram_read(self.pc + 2)
-
-            #     self.reg[register1] = self.reg[register1] * self.reg[register2]
-            #     self.pc += 3
-
-            # elif IR == PUSH:
-            #     self.reg[7] -= 1
-            #     operand_a = self.ram_read(self.pc + 1)
-            #     self.ram[self.reg[7]] = self.reg[operand_a]
-            # print("IR: ", IR)
+        # while self.running == True:
+        #     IR = self.ram[self.pc]
+        #     if IR in self.br_tbl:
+        #         # find the function/instruction based on the IR
+        #         self.br_tbl[IR]()
+        #     else:
+        #         print("CAN'T FiND", IR)
+        while True:
+            # Instructions register(IR)
+            IR = self.ram_read(self.pc)
+            # print(IR,"\n")
             if IR in self.br_tbl:
-                # find the function/instruction based on the IR
                 self.br_tbl[IR]()
             else:
-                print("CAN'T FiND", IR)
+                print("ERROR:", IR)
